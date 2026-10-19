@@ -78,7 +78,14 @@ Part 1이 제공해야 하는 "틀"이 모두 갖춰짐:
 - `run_experiment.py` (정책+k+태스크를 돌리고 결과 저장)
 - GitHub 퍼블릭 저장소: https://github.com/usmin1004/PE6203-Group-Project
 
-## 12. 다음 할 일 (선택 / 남은 범위)
-1. GitHub에서 팀원 Collaborator 초대 (교수님은 public이라 초대 없이도 볼 수 있음).
-2. (선택) Part 2/3/4가 실제 파일을 추가하면, `run_experiment.py`로 여러 정책 x 여러 k 값을 반복 실행해서 TCR@k 곡선용 데이터를 모으는 것은 Part 5(실험) 담당.
-3. (알아두기) 지금 `run_experiment.py`는 공격/인젝션(attack/injection) 없이 utility만 측정함 — "unauthorized tool call" 관련 보안 지표(TCR의 "안전하게" 부분)를 측정하려면 나중에 Part 5/6과 상의해서 injection task도 포함하는 실행 모드를 추가해야 할 수 있음.
+## 12. GitHub 팀원 초대 (완료)
+- Settings → Collaborators로 팀원 전원 초대 완료. README에 "누가 뭘 봐야 하는지" 표도 추가해서 공유함.
+
+## 13. 버그 수정: ctx.conversation_history가 항상 비어있던 문제 (완료)
+- 과제 PDF 요구사항("정책은 conversation history, agent's preceding trace도 참고 가능해야 함")을 다시 확인하다가 발견함.
+- `decide()`가 `ToolCallContext`를 만들 때 `conversation_history`를 채우지 않고 있었음 → Part 3 체크리스트 정책의 "외부 콘텐츠에서 주입된 지시사항인지" 체크가 불가능한 상태였음.
+- `decide(tc, task_description, conversation_history)`로 시그니처 변경, `query()`에서 `messages[:-1]`(현재 턴 이전까지의 대화 기록)을 넘기도록 수정. 가짜 데이터로 재테스트 완료.
+
+## 14. 다음 할 일 (선택 / 남은 범위)
+1. (선택) Part 2/3/4가 실제 파일을 추가하면, `run_experiment.py`로 여러 정책 x 여러 k 값을 반복 실행해서 TCR@k 곡선용 데이터를 모으는 것은 Part 5(실험) 담당.
+2. (알아두기) 지금 `run_experiment.py`는 공격/인젝션(attack/injection) 없이 utility만 측정함 — "unauthorized tool call" 관련 보안 지표(TCR의 "안전하게" 부분)를 측정하려면 나중에 Part 5/6과 상의해서 injection task도 포함하는 실행 모드를 추가해야 할 수 있음. README에 메모해둠.
