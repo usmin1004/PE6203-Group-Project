@@ -17,6 +17,24 @@ to a human reviewer**, under a per-task escalation budget `k`.
 - `interfaces.py` defines the exact shape (`ToolCallContext`, `policy()`,
   `reviewer()`) that your policy/reviewer file must follow.
 
+## Setup (do this once, on your own computer)
+
+Use a short folder path (e.g. `C:\dev\...` or directly under `Documents`) —
+a very deeply nested path can hit a Windows file-path-length limit during
+install.
+
+```powershell
+git clone https://github.com/usmin1004/PE6203-Group-Project.git
+cd PE6203-Group-Project
+python -m venv ad-env
+.\ad-env\Scripts\Activate.ps1
+pip install https://github.com/ethz-spylab/agentdojo/archive/refs/heads/main.zip
+```
+
+We install AgentDojo straight from its GitHub `main` branch (not the
+stable PyPI release) because the `OPENAI_COMPATIBLE` model provider we use
+isn't in a released version yet.
+
 ## Who does what (start here)
 
 1. Read this whole README once.
