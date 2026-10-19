@@ -16,7 +16,7 @@ class ToolCallContext:
     tool_name: str = ""
     tool_args: dict[str, Any] = field(default_factory=dict)
     is_read_only: bool | None = None
-    touches_remote: bool | None = None
+    touches_remote: bool | None = None  # not auto-filled by the gate yet; always None for now
 
 
 def policy(call: Any, ctx: ToolCallContext) -> str:

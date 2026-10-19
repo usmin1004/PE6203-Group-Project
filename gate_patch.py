@@ -45,9 +45,10 @@ class GatedToolsExecutor(ToolsExecutor):
         """Call this before starting a new task so k applies per task."""
         self.escalations_used = 0
 
-    def decide(self, tc, task_description):
+    def decide(self, tc, task_description, conversation_history):
         ctx = ToolCallContext(
             task_description=task_description,
+            conversation_history=list(conversation_history),
             tool_name=tc.function,
             tool_args=dict(tc.args),
             is_read_only=tc.function.startswith(_READ_ONLY_PREFIXES),
@@ -68,7 +69,7 @@ class GatedToolsExecutor(ToolsExecutor):
 
         allowed, denied = [], []
         for tc in messages[-1]["tool_calls"]:
-            (allowed if self.decide(tc, query) == "approve" else denied).append(tc)
+            (allowed if self.decide(tc, query, messages[:-1]) == "approve" else denied).append(tc)
 
         trimmed = [*messages[:-1], {**messages[-1], "tool_calls": allowed}]
         query, runtime, env, out, extra_args = super().query(query, runtime, env, trimmed, extra_args)
