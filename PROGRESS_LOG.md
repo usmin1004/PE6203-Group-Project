@@ -62,6 +62,23 @@ python -m agentdojo.scripts.benchmark -s workspace -ut user_task_0 --model OPENA
 - `git push`로 코드 업로드 완료.
 - 남은 일: 팀원들을 Settings → Collaborators로 초대해서 각자 `policies/`, `reviewer/` 폴더에 자기 파일 업로드할 수 있게 하기.
 
-## 10. 다음 할 일 (Part 1, 진행 중)
-1. 정책 + k값 + 태스크 목록을 받아서 실행하고, 태스크 시작마다 `reset_budget()` 호출하며, 결과를 저장하는 스크립트 작성.
-2. (참고) 지금 예산 리셋은 게이트 객체에 수동으로 `reset_budget()`을 불러줘야 함 — 실행 스크립트를 쓸 때 AgentPipeline 안에서 GatedToolsExecutor 인스턴스를 찾아 접근하는 방법을 정해야 함.
+## 10. run_experiment.py 작성 (완료) — Part 1 핵심 작업 끝
+- `find_gate(pipeline)`: AgentPipeline 내부(`elements` 트리)를 재귀적으로 뒤져서 `GatedToolsExecutor` 인스턴스를 찾아내는 함수.
+- `--policy`, `--reviewer`, `--k`, `--tasks`, `--model-id`, `--suite` 등 커맨드라인 옵션으로 정책/리뷰어/예산/태스크 목록을 지정.
+- 태스크마다 `gate.reset_budget()`을 호출한 뒤 `suite.run_task_with_pipeline(...)` 실행 → 태스크별로 예산이 독립적으로 적용됨.
+- 결과(태스크별 utility/security/escalations_used, 전체 평균)를 `runs/<정책이름>_k<k>_<타임스탬프>.json`으로 저장.
+- 버그 발견 및 수정: `PipelineConfig(llm="OPENAI_COMPATIBLE", ...)`가 `ValueError: 'OPENAI_COMPATIBLE' is not a valid ModelsEnum`로 실패함 — 실제 enum 값은 `"openai-compatible"`(소문자, 하이픈)이었음. `from agentdojo.models import ModelsEnum`을 import해서 `ModelsEnum.OPENAI_COMPATIBLE`로 수정 후 해결.
+- 실제 실행 테스트: `python run_experiment.py --policy policies.stub_policy --reviewer reviewer.stub_reviewer --k 1 --tasks user_task_0,user_task_1` → 두 태스크 모두 utility=True, 각각 `escalations_used=0/1`로 독립 리셋 확인됨. 결과 JSON 저장 확인.
+
+## 11. Part 1 상태: 핵심 기능 완료
+Part 1이 제공해야 하는 "틀"이 모두 갖춰짐:
+- `interfaces.py` (정책/리뷰어 함수 모양 규칙)
+- `gate_patch.py` (approve/deny/escalate + 예산 k 게이트)
+- `policies/`, `reviewer/` 폴더 (팀원들이 자기 파일 추가하는 곳)
+- `run_experiment.py` (정책+k+태스크를 돌리고 결과 저장)
+- GitHub 퍼블릭 저장소: https://github.com/usmin1004/PE6203-Group-Project
+
+## 12. 다음 할 일 (선택 / 남은 범위)
+1. GitHub에서 팀원 Collaborator 초대 (교수님은 public이라 초대 없이도 볼 수 있음).
+2. (선택) Part 2/3/4가 실제 파일을 추가하면, `run_experiment.py`로 여러 정책 x 여러 k 값을 반복 실행해서 TCR@k 곡선용 데이터를 모으는 것은 Part 5(실험) 담당.
+3. (알아두기) 지금 `run_experiment.py`는 공격/인젝션(attack/injection) 없이 utility만 측정함 — "unauthorized tool call" 관련 보안 지표(TCR의 "안전하게" 부분)를 측정하려면 나중에 Part 5/6과 상의해서 injection task도 포함하는 실행 모드를 추가해야 할 수 있음.
