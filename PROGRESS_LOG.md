@@ -1,6 +1,4 @@
-# Part 1 Build Log (for the report)
-
-A chronological record of the work done so far, kept for reference when writing the report.
+# Part 1 Build Log
 
 ## 1. Environment setup
 - `ad-env`: Python virtual environment. Python 3.14.4, `agentdojo` 0.1.35 (dev version — includes the `OPENAI_COMPATIBLE` provider, which lets us use OpenAI-compatible APIs like Zhipu).
@@ -58,9 +56,8 @@ Results:
 ## 9. Create the GitHub repository (done)
 - Wrote `README.md` and `.gitignore` (README covers how the gate works, folder layout, how to add a policy/reviewer, how to run a benchmark).
 - Initialized a local git repo and made the first commit.
-- Created a **Public** GitHub repo: `https://github.com/usmin1004/PE6203-Group-Project` (public so the professor can view it directly).
+- Created a public GitHub repo: `https://github.com/usmin1004/PE6203-Group-Project`.
 - Pushed the code with `git push`.
-- Remaining: invite teammates via Settings → Collaborators so they can upload their own files into `policies/` and `reviewer/`.
 
 ## 10. Write run_experiment.py (done) — core Part 1 work finished
 - `find_gate(pipeline)`: recursively searches the `AgentPipeline`'s `elements` tree to find the `GatedToolsExecutor` instance.
@@ -78,14 +75,11 @@ Everything Part 1 is responsible for providing is in place:
 - `run_experiment.py` (runs a policy+k over tasks and saves results)
 - Public GitHub repo: https://github.com/usmin1004/PE6203-Group-Project
 
-## 12. Invite teammates on GitHub (done)
-- Invited the whole team via Settings → Collaborators. Also added a "who does what" table to the README.
-
-## 13. Bug fix: ctx.conversation_history was always empty (done)
+## 12. Bug fix: ctx.conversation_history was always empty (done)
 - Found while re-checking the project spec, which says a policy must also be able to use "the agent's preceding trace" and "conversation history."
 - `decide()` was building `ToolCallContext` without ever filling in `conversation_history` → Part 3's checklist policy had no way to check for instructions injected via untrusted external content.
 - Changed the signature to `decide(tc, task_description, conversation_history)`, and `query()` now passes `messages[:-1]` (the conversation so far, before the current turn). Re-tested with fake data.
 
-## 14. Next steps (optional / remaining scope)
+## 13. Next steps (optional / remaining scope)
 1. (Optional) Once Part 2/3/4 add their real files, running `run_experiment.py` across multiple policies x k values to collect data for the TCR@k curve is Part 5's (experiments) job.
 2. (Note) `run_experiment.py` currently only measures utility, with no attack/injection tasks — to measure the "safety" dimension of TCR (no unauthorized tool calls under attack), we may need to add an injection-aware run mode later, in coordination with Part 5/6. Noted in the README.
