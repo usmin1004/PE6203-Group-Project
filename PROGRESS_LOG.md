@@ -55,7 +55,13 @@ python -m agentdojo.scripts.benchmark -s workspace -ut user_task_0 --model OPENA
 - 결과: `[GATE] tool=search_calendar_events ... -> approve` 로그 확인됨 (`search_` 접두사라 읽기 전용으로 판단 → stub_policy가 자동 승인). `Average utility: 100.00%`로 태스크 성공.
 - 즉, policy/reviewer 모듈을 환경변수로 불러오는 구조와 approve 경로가 실제 LLM 파이프라인에서도 정상 작동함을 확인함. (escalate/deny 경로는 가짜 데이터로 이미 테스트 완료 — 7번 항목 참고.)
 
-## 9. 다음 할 일 (Part 1, 진행 중)
-1. GitHub 저장소 구조 + README 만들기 (팀원들이 GitHub 웹사이트로 파일 업로드).
-2. 정책 + k값 + 태스크 목록을 받아서 실행하고, 태스크 시작마다 `reset_budget()` 호출하며, 결과를 저장하는 스크립트 작성.
-3. (나중에 참고) 지금 예산 리셋은 게이트 객체에 수동으로 `reset_budget()`을 불러줘야 함 — 실행 스크립트를 쓸 때 AgentPipeline 안에서 GatedToolsExecutor 인스턴스를 찾아 접근하는 방법을 정해야 함.
+## 9. GitHub 저장소 만들기 (완료)
+- `README.md`, `.gitignore` 작성 (README에 게이트 동작 방식, 폴더 구조, 정책/리뷰어 추가하는 법, 벤치마크 실행법 정리).
+- 로컬 git 저장소 초기화 후 첫 커밋.
+- GitHub에 **Public** 저장소 생성: `https://github.com/usmin1004/PE6203-Group-Project` (교수님이 바로 볼 수 있도록 public으로 선택).
+- `git push`로 코드 업로드 완료.
+- 남은 일: 팀원들을 Settings → Collaborators로 초대해서 각자 `policies/`, `reviewer/` 폴더에 자기 파일 업로드할 수 있게 하기.
+
+## 10. 다음 할 일 (Part 1, 진행 중)
+1. 정책 + k값 + 태스크 목록을 받아서 실행하고, 태스크 시작마다 `reset_budget()` 호출하며, 결과를 저장하는 스크립트 작성.
+2. (참고) 지금 예산 리셋은 게이트 객체에 수동으로 `reset_budget()`을 불러줘야 함 — 실행 스크립트를 쓸 때 AgentPipeline 안에서 GatedToolsExecutor 인스턴스를 찾아 접근하는 방법을 정해야 함.
