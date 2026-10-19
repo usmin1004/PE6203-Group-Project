@@ -85,6 +85,21 @@ python -m agentdojo.scripts.benchmark -s workspace -ut user_task_0 --model OPENA
 Never commit an API key. Set it as an environment variable in your own
 terminal only.
 
+## Open question: injection/attack tasks (needs team discussion)
+
+`run_experiment.py` currently only runs plain user tasks and measures
+`utility` (did the task succeed). It does **not** yet run AgentDojo's
+*injection tasks* (the attack scenarios), so it can't measure the
+"without executing any unauthorized tool call" part of TCR@k — only the
+"task completed" part.
+
+To get real TCR@k numbers we need a run mode that also injects an attack
+and checks `security` (AgentDojo already tracks this per task, see
+`benchmark_suite_with_injections` in `agentdojo/benchmark.py`). Whoever
+needs this first (likely Part 5, maybe Part 6) — flag it here or message
+Part 1, and we'll extend `run_experiment.py` together rather than
+duplicating the work in two places.
+
 ## Status
 
 See `PROGRESS_LOG.md` for a detailed, chronological build log (useful for
