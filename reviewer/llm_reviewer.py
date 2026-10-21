@@ -59,6 +59,10 @@ class ReviewResult:
     prompt_tokens: int | None = None
     completion_tokens: int | None = None
     total_tokens: int | None = None
+    response_model: str | None = None
+    finish_reason: str | None = None
+    http_status: int | None = None
+    error_type: str | None = None
 
 
 def _field(value: Any, key: str, default: Any = None) -> Any:
@@ -88,7 +92,26 @@ def _tool_call(value: Any) -> dict[str, Any]:
     args = _field(value, "args")
     if not isinstance(name, str) or not isinstance(args, dict):
         raise ValueError("Unsupported history tool call")
-    return {"id": _field(value, "id"), "function": name, "args": args}
+    call_id = _optional_text(_field(value, "id"))
+    return {"id": call_id, "function": name, "args": args}
+
+
+def _optional_text(value: Any) -> str | None:
+    if value is not None and not isinstance(value, str):
+        raise ValueError("Expected visible text or null")
+    return value
+
+
+def _check_nesting(value: Any, max_depth: int = 64) -> None:
+    """Bound JSON container nesting, including cycles, before serialization."""
+    pending = [(value, 0)]
+    while pending:
+        item, depth = pending.pop()
+        if isinstance(item, (dict, list)):
+            if depth > max_depth:
+                raise ValueError("Evidence nesting limit exceeded")
+            children = item.values() if isinstance(item, dict) else item
+            pending.extend((child, depth + 1) for child in children)
 
 
 def build_evidence(ctx: ToolCallContext) -> str:
@@ -103,6 +126,9 @@ def build_evidence(ctx: ToolCallContext) -> str:
         raise ValueError("A tool name is required")
     if not isinstance(ctx.tool_args, dict) or not isinstance(ctx.conversation_history, list):
         raise ValueError("Invalid context shape")
+    if any(flag is not None and type(flag) is not bool
+           for flag in (ctx.is_read_only, ctx.touches_remote)):
+        raise ValueError("Metadata flags must be Boolean or null")
     history = []
     for message in ctx.conversation_history:
         role = _field(message, "role")
@@ -112,17 +138,19 @@ def build_evidence(ctx: ToolCallContext) -> str:
         if role == "assistant" and _field(message, "tool_calls") is not None:
             item["tool_calls"] = [_tool_call(tc) for tc in _field(message, "tool_calls")]
         if role == "tool":
-            item["tool_call_id"] = _field(message, "tool_call_id")
+            item["tool_call_id"] = _optional_text(_field(message, "tool_call_id"))
             if _field(message, "tool_call") is not None:
                 item["tool_call"] = _tool_call(_field(message, "tool_call"))
-            item["error"] = _field(message, "error")
+            item["error"] = _optional_text(_field(message, "error"))
         history.append(item)
-    return json.dumps({
+    evidence = {
         "task_description": ctx.task_description,
         "proposed_tool_call": {"name": ctx.tool_name, "arguments": ctx.tool_args},
         "metadata": {"is_read_only": ctx.is_read_only, "touches_remote": ctx.touches_remote},
         "conversation_history": history,
-    }, ensure_ascii=False, allow_nan=False)
+    }
+    _check_nesting(evidence)
+    return json.dumps(evidence, ensure_ascii=False, allow_nan=False)
 
 
 def _unique_object(pairs):
@@ -155,10 +183,12 @@ def review_with_details(call: Any, ctx: ToolCallContext) -> ReviewResult:
     start = time.monotonic()
     model = os.environ.get("REVIEWER_MODEL", "glm-4.5-flash")
     usage = {"prompt_tokens": None, "completion_tokens": None, "total_tokens": None}
+    diagnostics = {"response_model": None, "finish_reason": None,
+                   "http_status": None, "error_type": None}
 
     def result(approved, status, reason):
         return ReviewResult(approved, status, reason, model,
-                            round((time.monotonic() - start) * 1000), **usage)
+                            round((time.monotonic() - start) * 1000), **usage, **diagnostics)
 
     try:
         timeout = float(os.environ.get("REVIEWER_TIMEOUT_SECONDS", "30"))
@@ -170,7 +200,7 @@ def review_with_details(call: Any, ctx: ToolCallContext) -> ReviewResult:
         if not math.isfinite(timeout) or timeout <= 0 or max_chars <= 0 or max_tokens <= 0 or not model.strip():
             raise ValueError("Invalid reviewer configuration")
         evidence = build_evidence(ctx)
-    except (TypeError, ValueError, OverflowError):
+    except (TypeError, ValueError, OverflowError, AttributeError, RecursionError):
         return result(False, "invalid_context_or_config", "Invalid context or configuration.")
     if len(evidence) > max_chars:
         return result(False, "context_limit", "Context exceeds configured limit; no evidence was truncated.")
@@ -191,18 +221,27 @@ def review_with_details(call: Any, ctx: ToolCallContext) -> ReviewResult:
                 **({"response_format": {"type": "json_object"}} if json_mode == "1" else {}),
             )
         raw_usage = _field(response, "usage")
+        response_model = _field(response, "model")
+        if isinstance(response_model, str):
+            diagnostics["response_model"] = response_model
         for name in usage:
             count = _field(raw_usage, name)
             usage[name] = count if type(count) is int and count >= 0 else None
         choice = response.choices[0]
+        if isinstance(choice.finish_reason, str):
+            diagnostics["finish_reason"] = choice.finish_reason
         if choice.finish_reason != "stop" or _field(choice.message, "tool_calls"):
             return result(False, "invalid_response", "Incomplete response or unexpected tool calls.")
         approved, reason = parse_decision(choice.message.content)
         return result(approved, "ok", reason)
     except (ValueError, TypeError, AttributeError, IndexError, KeyError):
         return result(False, "invalid_response", "Reviewer response did not match the decision schema.")
-    except Exception:
+    except Exception as exc:
         # Do not expose exception bodies: providers may echo credentials or trace.
+        status_code = _field(exc, "status_code")
+        if type(status_code) is int and 100 <= status_code <= 599:
+            diagnostics["http_status"] = status_code
+        diagnostics["error_type"] = type(exc).__name__
         return result(False, "api_error", "Reviewer API or dependency unavailable.")
 
 

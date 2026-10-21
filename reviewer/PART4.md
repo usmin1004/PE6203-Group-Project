@@ -91,6 +91,11 @@ content blocks. Additional context attributes, arbitrary message metadata, and
 the original `call` object's extra fields are not serialized. Unsupported content
 fails closed instead of being removed from the trace.
 
+Metadata flags must be Boolean or null. Tool-call IDs and tool error fields must
+be text or null, preventing arbitrary nested metadata from entering through those
+scalar fields. JSON container nesting is limited to 64 levels before serialization;
+missing context fields and excessive nesting cause denial before any API request.
+
 The caller must keep oracle labels out of visible text and tool arguments too:
 an allowlist cannot determine whether arbitrary text contains hidden annotations.
 The current gate's context construction is the source of these visible fields.
@@ -118,6 +123,12 @@ latency, and provider-reported prompt/completion/total token counts. Missing tok
 counts remain `None`. `reviewer` emits the same record through the module's INFO
 logger, which experiments can enable without changing shared files:
 
+Diagnostics also include `response_model` (the model returned by the provider),
+`finish_reason`, and, for failures, `http_status` and `error_type`. Exception
+bodies are not logged. These distinguish failures such as HTTP 429 rate limits
+and output-length exhaustion from semantic deny decisions. A missing diagnostic
+remains null; the requested model continues to be recorded as `model`.
+
 ```powershell
 New-Item -ItemType Directory -Force runs | Out-Null
 @'
@@ -138,10 +149,13 @@ treat logs as experiment data. `runs/` is already ignored by Git.
 
 ## Verification status
 
-All 17 offline checks pass locally. The six-case live synthetic check passes with
+All 22 offline checks pass locally. The original six-case live synthetic check passed with
 OpenRouter `openai/gpt-4.1-mini` and JSON mode enabled; see `LIVE_VALIDATION.md`.
 Full AgentDojo benchmark results still require the group's AgentDojo environment.
 No TCR, HITL performance, or general attack-resistance result is claimed.
+The review revision changes input guards and diagnostics, without changing the
+system prompt or model request settings; the original live records are retained
+as historical evidence rather than relabeled as a new live run.
 The live smoke test compares six synthetic decisions externally; expected answers
 are never included in reviewer prompts. It is a sanity check, not a benchmark.
 

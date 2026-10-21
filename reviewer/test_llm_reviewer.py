@@ -129,6 +129,35 @@ class ReviewerTests(unittest.TestCase):
             self.assertFalse(mod.reviewer(None, ctx))
         self.factory.assert_not_called()
 
+    def test_missing_context_fields_fail_closed_instead_of_crashing_gate(self):
+        for ctx in (None, object(), NS(task_description="Review this")):
+            with self.subTest(context_type=type(ctx).__name__):
+                outcome = mod.review_with_details(None, ctx)
+                self.assertIs(outcome.approved, False)
+                self.assertEqual(outcome.status, "invalid_context_or_config")
+        self.factory.assert_not_called()
+
+    def test_deep_context_fails_closed_before_api(self):
+        args = {}
+        nested = args
+        for _ in range(80):
+            nested["child"] = {}
+            nested = nested["child"]
+        self.assertEqual(mod.review_with_details(None, context(tool_args=args)).status,
+                         "invalid_context_or_config")
+        self.factory.assert_not_called()
+
+    def test_structured_metadata_cannot_leak_through_scalar_fields(self):
+        cases = [context(is_read_only={"ground_truth": "SECRET"}),
+                 context(touches_remote=["SECRET"]),
+                 context(conversation_history=[{"role": "tool", "content": "text", "error": {"label": "SECRET"}}]),
+                 context(conversation_history=[{"role": "tool", "content": "text", "tool_call_id": {"label": "SECRET"}}]),
+                 context(conversation_history=[{"role": "assistant", "tool_calls": [
+                     NS(id={"label": "SECRET"}, function="read_file", args={})]}])]
+        for ctx in cases:
+            self.assertFalse(mod.reviewer(None, ctx))
+        self.factory.assert_not_called()
+
     def test_invalid_configuration(self):
         for key, value in [("REVIEWER_TIMEOUT_SECONDS", "nan"), ("REVIEWER_TIMEOUT_SECONDS", "-1"),
                            ("REVIEWER_MAX_TOKENS", "zero"), ("REVIEWER_MAX_CONTEXT_CHARS", "0")]:
@@ -143,6 +172,25 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(outcome.status, "api_error")
         self.assertNotIn("test-only-key", outcome.reason)
         self.client.chat.completions.create.assert_called_once()
+
+    def test_http_failures_keep_safe_diagnostics_not_error_bodies(self):
+        error = RuntimeError("test-only-key: confidential provider response")
+        error.status_code = 429
+        self.client.chat.completions.create.side_effect = error
+        outcome = mod.review_with_details(None, context())
+        self.assertFalse(outcome.approved)
+        self.assertEqual(outcome.http_status, 429)
+        self.assertEqual(outcome.error_type, "RuntimeError")
+        self.assertNotIn("test-only-key", str(outcome))
+
+    def test_response_metadata_preserved_even_when_output_is_incomplete(self):
+        self.respond(finish_reason="length")
+        self.client.chat.completions.create.return_value.model = "provider/model-version"
+        outcome = mod.review_with_details(None, context())
+        self.assertFalse(outcome.approved)
+        self.assertEqual(outcome.response_model, "provider/model-version")
+        self.assertEqual(outcome.finish_reason, "length")
+        self.assertEqual(outcome.total_tokens, 140)
 
     def test_provider_configuration_fallbacks_and_overrides(self):
         os.environ.clear()

@@ -20,6 +20,11 @@ security evaluator, attack annotations, or ground-truth task labels. Expected
 answers used in tests remain outside the reviewer's input. The integration must
 also ensure that oracle information is not placed inside otherwise visible text.
 
+The implementation additionally validates scalar metadata types and limits JSON
+container nesting to 64 levels. Missing context fields and malformed metadata
+produce a denial before an API request, so they cannot abort the gate's decision
+path or be serialized as arbitrary nested annotations.
+
 ## Prompting and decision procedure
 
 A separate model request asks the reviewer to independently assess authorization,
@@ -55,6 +60,11 @@ cost breakdown separately from policy and agent inference. Missing usage is
 recorded as unknown rather than zero. Token totals can be converted to money
 using the prices applicable to the actual model and experiment date.
 
+Diagnostics retain the provider-returned model ID, output finish reason, HTTP
+status, and exception type when available. They exclude exception bodies. This
+helps separate rate limits, incomplete outputs, and other provider errors from
+valid semantic denials during failure analysis.
+
 ## Validation and limitations
 
 Offline tests cover Boolean interface compliance, approvals and denials, allowed
@@ -63,6 +73,12 @@ provider failure, token accounting, and integration with the unchanged gate's
 budget/reset logic. API and AgentDojo dependencies are replaced with test doubles
 in those tests. Thus, these tests validate implementation behavior, not model
 accuracy or resilience to adversarial prompts.
+
+The reviewed implementation passes 22 offline tests, including regressions for
+missing context, excessive nesting, malformed scalar metadata, safe HTTP error
+diagnostics, and incomplete-response metadata. The original six-case live run is
+retained as historical evidence; the review revision leaves the prompt and API
+request settings unchanged and does not claim a second live evaluation.
 
 An optional live check evaluates six synthetic scenarios: authorized read,
 authorized write, incorrect recipient, injected tool-output instructions,

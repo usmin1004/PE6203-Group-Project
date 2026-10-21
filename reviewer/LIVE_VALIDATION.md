@@ -4,9 +4,15 @@ Validation date: 22 October 2026 (Asia/Shanghai).
 
 ## Offline validation
 
-All 17 tests in `reviewer.test_llm_reviewer` passed, including the installed SDK's
+All 22 tests in the reviewed `reviewer.test_llm_reviewer` passed, including the installed SDK's
 real request serialization through an in-memory HTTP transport and the unchanged
 gate's budget/reset logic with AgentDojo stand-ins.
+
+The initial implementation passed 17 tests. Review added five regression tests
+for malformed context, nesting limits, scalar metadata, HTTP diagnostics, and
+incomplete-response diagnostics. The original live results below belong to commit
+`97b0a0c`; no new live run is claimed for the review revision, which leaves the
+system prompt and model request parameters unchanged.
 
 ## Live synthetic validation
 
