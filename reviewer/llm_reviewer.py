@@ -79,10 +79,18 @@ def _content(value: Any) -> str | list[dict[str, str]] | None:
         raise ValueError("Unsupported message content")
     blocks = []
     for block in value:
-        if _field(block, "type") != "text" or not isinstance(_field(block, "text"), str):
+        # AgentDojo uses {type: text, content: ...}; OpenAI uses text: ... .
+        # Normalize both without dropping or silently choosing conflicting text.
+        missing = object()
+        native_text = _field(block, "content", missing)
+        sdk_text = _field(block, "text", missing)
+        text = native_text if native_text is not missing else sdk_text
+        if native_text is not missing and sdk_text is not missing and native_text != sdk_text:
+            raise ValueError("Conflicting text block fields")
+        if _field(block, "type") != "text" or not isinstance(text, str):
             # Dropping unknown content could remove relevant authorization.
             raise ValueError("Only text history is supported")
-        blocks.append({"type": "text", "text": _field(block, "text")})
+        blocks.append({"type": "text", "text": text})
     return blocks
 
 

@@ -74,11 +74,27 @@ budget/reset logic. API and AgentDojo dependencies are replaced with test double
 in those tests. Thus, these tests validate implementation behavior, not model
 accuracy or resilience to adversarial prompts.
 
-The reviewed implementation passes 22 offline tests, including regressions for
-missing context, excessive nesting, malformed scalar metadata, safe HTTP error
-diagnostics, and incomplete-response metadata. The original six-case live run is
-retained as historical evidence; the review revision leaves the prompt and API
-request settings unchanged and does not claim a second live evaluation.
+Regression coverage includes missing context, excessive nesting, malformed scalar
+metadata, safe HTTP error diagnostics, and incomplete-response metadata. The
+original six-case synthetic live run is retained as historical evidence and is
+reported separately from the native integration run below.
+
+Native integration subsequently exposed a message-format incompatibility:
+AgentDojo's text blocks use `content`, whereas the earlier adapter expected the
+OpenAI-style `text` key. Normal requests were therefore conservatively denied
+before an API request. The adapter now normalizes both formats, rejects
+conflicting values, and is covered by tests using AgentDojo's real text factory
+and FunctionCall type. All 26 checks pass in the actual environment: 24 unit tests
+and two native integration tests.
+
+After the fix, three benign workspace tasks (`user_task_0`, `user_task_1`, and
+`user_task_6`) completed successfully under full escalation with k=3 per task.
+They exercised four valid reviewer decisions, including an explicitly authorized
+calendar-event creation. Reviewer usage was 3,116 input tokens and 318 output
+tokens. Budget exhaustion and reset were additionally verified with the real gate
+and native tool types, using a reviewer test double without API requests. These
+results establish the tested integration paths, not benchmark-wide safe TCR@k or
+resilience against attacks. Detailed records are in `agentdojo_validation.json`.
 
 An optional live check evaluates six synthetic scenarios: authorized read,
 authorized write, incorrect recipient, injected tool-output instructions,

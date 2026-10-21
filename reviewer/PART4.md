@@ -8,16 +8,18 @@ not change the shared interface, gate, policy modules, or experiment runner.
 
 - `llm_reviewer.py`: implementation, fixed prompt, strict output parser, and token accounting.
 - `test_llm_reviewer.py`: offline unit and gate integration tests.
+- `test_agentdojo_context.py`: optional tests using real AgentDojo types.
 - `smoke_test.py`: six optional real-model synthetic checks.
 - `PART4_REPORT.md`: English report section and presentation notes.
 - `LIVE_VALIDATION.md` and `live_validation.json`: measured synthetic live results.
+- `AGENTDOJO_VALIDATION.md` and `agentdojo_validation.json`: native integration results.
 
 ## Run offline checks
 
 From the repository root:
 
 ```powershell
-python -m unittest reviewer.test_llm_reviewer -v
+python -m unittest reviewer.test_agentdojo_context reviewer.test_llm_reviewer -v
 ```
 
 The offline tests replace the API and AgentDojo dependencies with test doubles.
@@ -25,7 +27,9 @@ When the OpenAI SDK is installed, one additional test exercises its real request
 serialization with an in-memory HTTP transport and no network access.
 They verify the interface, evidence boundary, request structure, parser, failure
 behavior, token accounting, and the unchanged gate's actual budget logic.
-They do not measure the model's judgment quality.
+They do not measure the model's judgment quality. There are 24 dependency-free
+tests and two optional native-type tests. The latter skip if AgentDojo is absent;
+all 26 passed inside the actual AgentDojo environment.
 
 ## Run with the group's environment
 
@@ -87,7 +91,9 @@ review makes at most one request.
 The reviewer only serializes task description, proposed tool name and arguments,
 the two metadata flags, and the visible conversation's roles, text, tool calls,
 tool results, and errors. It supports AgentDojo FunctionCall objects and text
-content blocks. Additional context attributes, arbitrary message metadata, and
+content blocks. Native AgentDojo blocks use `content` while OpenAI-style blocks
+use `text`; both are normalized to visible text in the evidence envelope. Blocks
+with conflicting values are denied. Additional context attributes, arbitrary message metadata, and
 the original `call` object's extra fields are not serialized. Unsupported content
 fails closed instead of being removed from the trace.
 
@@ -149,13 +155,16 @@ treat logs as experiment data. `runs/` is already ignored by Git.
 
 ## Verification status
 
-All 22 offline checks pass locally. The original six-case live synthetic check passed with
+All 26 checks pass in the actual AgentDojo environment (24 unit checks plus two
+native-type integration checks). The original six-case live synthetic check passed with
 OpenRouter `openai/gpt-4.1-mini` and JSON mode enabled; see `LIVE_VALIDATION.md`.
-Full AgentDojo benchmark results still require the group's AgentDojo environment.
+Three benign AgentDojo workspace tasks also pass after fixing native message
+compatibility, including an authorized calendar write. See `AGENTDOJO_VALIDATION.md`.
+Full suite and attack-aware results remain separate experimental work.
 No TCR, HITL performance, or general attack-resistance result is claimed.
-The review revision changes input guards and diagnostics, without changing the
-system prompt or model request settings; the original live records are retained
-as historical evidence rather than relabeled as a new live run.
+The original synthetic live records remain historical evidence rather than being
+relabeled as a new run. The later native integration run has its own records,
+source archive hash, and reviewer source hash.
 The live smoke test compares six synthetic decisions externally; expected answers
 are never included in reviewer prompts. It is a sanity check, not a benchmark.
 

@@ -4,7 +4,9 @@ Validation date: 22 October 2026 (Asia/Shanghai).
 
 ## Offline validation
 
-All 22 tests in the reviewed `reviewer.test_llm_reviewer` passed, including the installed SDK's
+The reviewed implementation now passes 26 checks inside the actual AgentDojo
+environment: 24 tests in `reviewer.test_llm_reviewer` and two optional checks in
+`reviewer.test_agentdojo_context`. These include the installed SDK's
 real request serialization through an in-memory HTTP transport and the unchanged
 gate's budget/reset logic with AgentDojo stand-ins.
 
@@ -13,6 +15,12 @@ for malformed context, nesting limits, scalar metadata, HTTP diagnostics, and
 incomplete-response diagnostics. The original live results below belong to commit
 `97b0a0c`; no new live run is claimed for the review revision, which leaves the
 system prompt and model request parameters unchanged.
+
+A later native integration run found and fixed AgentDojo's `content` text-block
+format compatibility. Two unit regressions and two tests against real AgentDojo
+types were added. The six-case synthetic result below remains the original run;
+the newer three-task integration run is documented separately in
+`AGENTDOJO_VALIDATION.md` and `agentdojo_validation.json`.
 
 ## Live synthetic validation
 

@@ -85,6 +85,20 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(messages[0]["content"], mod.SYSTEM_PROMPT)
         self.assertEqual(json.loads(messages[1]["content"])["conversation_history"][0]["content"], attack)
 
+    def test_native_agentdojo_content_blocks_are_preserved(self):
+        ctx = context(conversation_history=[{"role": "user", "content": [
+            {"type": "text", "content": "Send only to Alice."}]}])
+        self.assertTrue(mod.reviewer(None, ctx))
+        request = self.client.chat.completions.create.call_args.kwargs
+        history = json.loads(request["messages"][1]["content"])["conversation_history"]
+        self.assertEqual(history[0]["content"], [{"type": "text", "text": "Send only to Alice."}])
+
+    def test_conflicting_native_and_sdk_text_is_not_silently_dropped(self):
+        ctx = context(conversation_history=[{"role": "tool", "content": [
+            {"type": "text", "content": "Do not send.", "text": "Send now."}]}])
+        self.assertFalse(mod.reviewer(None, ctx))
+        self.factory.assert_not_called()
+
     def test_malformed_responses_never_approve(self):
         cases = ["True", "approve", "```json\n{}\n```", "[]", "null",
                  '{"decision":true,"reason":"yes"}', '{"decision":"APPROVE","reason":"yes"}',
@@ -236,7 +250,7 @@ class ReviewerTests(unittest.TestCase):
         modules["agentdojo.agent_pipeline.tool_execution"].ToolsExecutor = type("ToolsExecutor", (), {})
         modules["agentdojo.functions_runtime"].EmptyEnv = type("EmptyEnv", (), {})
         modules["agentdojo.types"].ChatToolResultMessage = dict
-        modules["agentdojo.types"].text_content_block_from_string = lambda text: {"type": "text", "text": text}
+        modules["agentdojo.types"].text_content_block_from_string = lambda text: {"type": "text", "content": text}
         with patch.dict(sys.modules, modules), patch.dict(os.environ, {
                 "GATE_POLICY_MODULE": "policies.full_escalate_policy",
                 "GATE_REVIEWER_MODULE": "reviewer.llm_reviewer", "GATE_BUDGET_K": "2"}):
