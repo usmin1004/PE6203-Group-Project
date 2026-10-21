@@ -102,8 +102,9 @@ and 45 reviews across successfully completed tasks. All reviews returned valid
 outputs: 67 approvals and six denials, with no API/format errors. Reviewer usage
 was 72,819 input tokens and 5,312 output tokens. This run tests ordinary utility,
 not safety under injected attacks. `WORKSPACE_VALIDATION.md` documents the
-configuration, cost estimate and observed failures; full trajectories and
-decisions are in `workspace_validation.json`.
+configuration, cost estimate and observed failures; per-task proposed tool calls,
+arguments, gate decisions and reviewer records are in `workspace_validation.json`.
+This record does not contain the complete agent conversation or final answers.
 
 Failures included budget exhaustion and over-conservative reviewer judgments.
 For example, a grocery-list search was denied because it did not complete the

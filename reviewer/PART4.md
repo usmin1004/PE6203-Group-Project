@@ -165,7 +165,8 @@ The full 40-task benign run completed with 25 successes (62.5%), 73 reviews,
 and no reviewer API/format errors. See `WORKSPACE_VALIDATION.md` for the recorded
 denials, budget failures and limitations. Attack-aware comparisons and budget
 sweeps remain separate experimental work.
-No TCR, HITL performance, or general attack-resistance result is claimed.
+These are benign utility and review-load measurements; no attack-aware safe
+TCR@k or general attack-resistance result is claimed.
 The original synthetic live records remain historical evidence rather than being
 relabeled as a new run. The later native integration run has its own records,
 source archive hash, and reviewer source hash.
