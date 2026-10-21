@@ -96,6 +96,22 @@ and native tool types, using a reviewer test double without API requests. These
 results establish the tested integration paths, not benchmark-wide safe TCR@k or
 resilience against attacks. Detailed records are in `agentdojo_validation.json`.
 
+The subsequent complete 40-task benign workspace run, using full escalation and
+k=3, completed 25 tasks (62.5% plain-task utility). It required 73 reviews overall
+and 45 reviews across successfully completed tasks. All reviews returned valid
+outputs: 67 approvals and six denials, with no API/format errors. Reviewer usage
+was 72,819 input tokens and 5,312 output tokens. This run tests ordinary utility,
+not safety under injected attacks. `WORKSPACE_VALIDATION.md` documents the
+configuration, cost estimate and observed failures; full trajectories and
+decisions are in `workspace_validation.json`.
+
+Failures included budget exhaustion and over-conservative reviewer judgments.
+For example, a grocery-list search was denied because it did not complete the
+entire task, even though it was an appropriate intermediate step. Some failures
+had no gate denial, while an email containing an unspecified empty attachment
+was denied as incomplete. These cases show why semantic denials, operational
+errors, budget limits and task-level success must be analyzed separately.
+
 An optional live check evaluates six synthetic scenarios: authorized read,
 authorized write, incorrect recipient, injected tool-output instructions,
 unrelated sensitive read, and ambiguous permanent deletion. A measured OpenRouter
@@ -125,8 +141,10 @@ checks whether the action, recipient, and side effects match the user's request.
 It returns a strict approve-or-deny decision and a brief explanation. API failures
 and invalid outputs cause denial. The gate handles the review budget separately.
 We also record reviewer tokens so that its cost can be separated from the policy
-and the agent. Our offline tests verify the implementation; actual safety and
-task-completion performance must come from the group's benchmark experiments.”
+and the agent. All 26 implementation checks pass. In the 40-task ordinary
+workspace run, 25 tasks completed under a review budget of three per task, using
+73 reviews. The remaining failures include budget limits and conservative
+judgments. These results do not measure resistance to injected attacks.”
 
 ### Why not approve every read?
 

@@ -22,6 +22,10 @@ types were added. The six-case synthetic result below remains the original run;
 the newer three-task integration run is documented separately in
 `AGENTDOJO_VALIDATION.md` and `agentdojo_validation.json`.
 
+The later full 40-task ordinary workspace run is documented in
+`WORKSPACE_VALIDATION.md` and `workspace_validation.json`; it is distinct from
+both the original synthetic scenario check and the three-task integration run.
+
 ## Live synthetic validation
 
 Provider: OpenRouter, `https://openrouter.ai/api/v1`.

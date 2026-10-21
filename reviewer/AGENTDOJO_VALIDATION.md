@@ -55,7 +55,8 @@ not included in that estimate.
 
 The runner also returned `security=true`, but these runs had no injected attack.
 They are integration checks and benign utility observations, not an attack-aware
-safe TCR@k measurement or a full 40-task workspace evaluation.
+safe TCR@k measurement. A subsequent full 40-task benign evaluation is documented
+separately in `WORKSPACE_VALIDATION.md` and `workspace_validation.json`.
 
 ## Reproduce
 

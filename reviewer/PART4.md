@@ -13,6 +13,7 @@ not change the shared interface, gate, policy modules, or experiment runner.
 - `PART4_REPORT.md`: English report section and presentation notes.
 - `LIVE_VALIDATION.md` and `live_validation.json`: measured synthetic live results.
 - `AGENTDOJO_VALIDATION.md` and `agentdojo_validation.json`: native integration results.
+- `WORKSPACE_VALIDATION.md` and `workspace_validation.json`: full 40-task benign run and failure observations.
 
 ## Run offline checks
 
@@ -160,7 +161,10 @@ native-type integration checks). The original six-case live synthetic check pass
 OpenRouter `openai/gpt-4.1-mini` and JSON mode enabled; see `LIVE_VALIDATION.md`.
 Three benign AgentDojo workspace tasks also pass after fixing native message
 compatibility, including an authorized calendar write. See `AGENTDOJO_VALIDATION.md`.
-Full suite and attack-aware results remain separate experimental work.
+The full 40-task benign run completed with 25 successes (62.5%), 73 reviews,
+and no reviewer API/format errors. See `WORKSPACE_VALIDATION.md` for the recorded
+denials, budget failures and limitations. Attack-aware comparisons and budget
+sweeps remain separate experimental work.
 No TCR, HITL performance, or general attack-resistance result is claimed.
 The original synthetic live records remain historical evidence rather than being
 relabeled as a new run. The later native integration run has its own records,
