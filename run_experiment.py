@@ -105,13 +105,16 @@ def main():
         "results": results,
         "avg_utility": avg_utility,
         "total_escalations": sum(r["escalations_used"] for r in results),
+        # Assignment definition: total escalations across all successfully completed tasks (a SUM).
+        "hitl_load_utility_success": sum(r["escalations_used"] for r in results if r["utility"]),
     }
     out_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
 
     print(f"\nSaved results to {out_path}")
     if avg_utility is not None:
         print(f"Average utility: {avg_utility * 100:.2f}%")
-    print(f"Total escalations used: {summary['total_escalations']}")
+    print(f"Total escalations used: {summary['total_escalations']}  |  "
+          f"HITL load (sum over successful tasks): {summary['hitl_load_utility_success']}")
 
 
 if __name__ == "__main__":
