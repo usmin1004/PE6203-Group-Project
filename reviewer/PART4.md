@@ -7,6 +7,9 @@ not change the shared interface, gate, policy modules, or experiment runner.
 ## Files
 
 - `llm_reviewer.py`: implementation, fixed prompt, strict output parser, and token accounting.
+- `FINAL_HANDOFF.md`: current Part 1/5 integration instructions and validation scope.
+- `run_with_accounting.py`: shared-runner wrapper exporting reviewer diagnostics and component usage.
+- `test_experiment_handoff.py`: current replay, budget and accounting regressions.
 - `test_llm_reviewer.py`: offline unit and gate integration tests.
 - `test_agentdojo_context.py`: optional tests using real AgentDojo types.
 - `smoke_test.py`: six optional real-model synthetic checks.
@@ -20,7 +23,7 @@ not change the shared interface, gate, policy modules, or experiment runner.
 From the repository root:
 
 ```powershell
-python -m unittest reviewer.test_agentdojo_context reviewer.test_llm_reviewer -v
+python -m unittest reviewer.test_agentdojo_context reviewer.test_llm_reviewer reviewer.test_experiment_handoff -v
 ```
 
 The offline tests replace the API and AgentDojo dependencies with test doubles.
@@ -28,9 +31,10 @@ When the OpenAI SDK is installed, one additional test exercises its real request
 serialization with an in-memory HTTP transport and no network access.
 They verify the interface, evidence boundary, request structure, parser, failure
 behavior, token accounting, and the unchanged gate's actual budget logic.
-They do not measure the model's judgment quality. There are 24 dependency-free
-tests and two optional native-type tests. The latter skip if AgentDojo is absent;
-all 26 passed inside the actual AgentDojo environment.
+They do not measure the model's judgment quality. The original 26 checks passed in the recorded environment. The 28 October
+finalization adds provider and experiment-handoff regressions: all 31 checks pass
+in the actual AgentDojo environment, including the real replay script with
+scripted HTTP responses. Native/SDK checks skip when their dependencies are absent.
 
 ## Run with the group's environment
 
@@ -149,7 +153,12 @@ Log messages contain `REVIEWER ` followed by JSON. Aggregate
 token counts only across records for this component; account for policy and agent
 tokens separately. Dollar cost requires the provider/model prices applicable to
 the experiment. Never interpret missing usage as zero or fabricate dollar values.
-The root runner does not yet aggregate reviewer costs automatically.
+The shared Part 2 tracker now receives these calls inside its `reviewer`
+component scope, preventing attribution to `agent`. Use the wrapper documented in
+`FINAL_HANDOFF.md` to export totals and reviewer records without changing the
+shared runners. The tracker omits responses without usage; the reviewer records
+retain null counts. Do not add tracker and reviewer-record tokens together: they
+are two views of the same requests.
 
 The log omits credentials and full traces, but explanations may mention evidence;
 treat logs as experiment data. `runs/` is already ignored by Git.
@@ -173,6 +182,18 @@ source archive hash, and reviewer source hash.
 The live smoke test compares six synthetic decisions externally; expected answers
 are never included in reviewer prompts. It is a sanity check, not a benchmark.
 
-The current shared runner has no injection mode. Its plain-task utility numbers
-cannot establish safe TCR@k under attacks; Part 5 should evaluate attack trajectories
-as well and distinguish operational denials from semantic reviewer denials.
+The shared repository now includes separate replay and real-attack runners.
+The earlier plain-task measurements still do not establish safe TCR@k under
+attacks. Replay uses synthetic history and omitted tool results, so its gate-test
+metrics must be reported separately from real-agent attack results. See
+FINAL_HANDOFF.md for current commands and metric caveats.
+
+## Finalization on 28 October 2026
+
+The decision prompt and Boolean interface are unchanged. Requests now participate
+in the shared reviewer cost component. On the actual bigmodel.cn provider only,
+GLM-4.5 thinking is disabled to preserve the short structured-decision budget;
+OpenRouter receives no provider-specific thinking option. This matches the
+team's class-provider handling. Wire-format and routing tests use offline
+responses and do not establish live GLM judgment quality. The historical
+OpenRouter measurements are retained with their original source provenance.
