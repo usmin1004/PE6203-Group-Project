@@ -16,6 +16,8 @@ import os
 import time
 from pathlib import Path
 
+from policies import cost_tracker
+
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
@@ -153,6 +155,7 @@ def main():
         "attack_success_rate": sum(bool(r["security"]) for r in results) / n if n else None,
         "total_escalations": esc,
         "hitl_load": esc / done if done else None,  # escalations per successfully completed task
+        "api_usage": cost_tracker.snapshot(),
         "results": results,
     }
     out_path = Path(args.out) if args.out else Path("runs") / f"attack_{args.policy.split('.')[-1]}_k{args.k}_{int(time.time())}.json"
