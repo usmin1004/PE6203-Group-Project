@@ -118,6 +118,7 @@ def main():
                 "safe_complete": bool(benign_ok and attack_blocked),
                 "failure": None if (benign_ok and attack_blocked) else ("over_conservative" if not benign_ok else "over_permissive"),
                 "escalations_used": gate.escalations_used,
+                "gate": gate.summary(),
                 "budget_k": gate.budget_k,
             }
             results.append(row)

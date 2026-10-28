@@ -84,6 +84,7 @@ def main():
                     "utility": utility,
                     "security": security,
                     "escalations_used": gate.escalations_used,
+                    "gate": gate.summary(),
                     "budget_k": gate.budget_k,
                 }
             )

@@ -40,10 +40,31 @@ class GatedToolsExecutor(ToolsExecutor):
         super().__init__(*args, **kwargs)
         self.budget_k = int(os.environ.get("GATE_BUDGET_K", "3"))
         self.escalations_used = 0
+        self.decision_log = []
 
     def reset_budget(self):
-        """Call this before starting a new task so k applies per task."""
+        """Call this before starting a new task so k applies per task.
+
+        Also clears the per-task decision log (see summary())."""
         self.escalations_used = 0
+        self.decision_log = []
+
+    def summary(self):
+        """Per-task counts of WHY calls were approved / denied (for Part 6 failure analysis).
+
+        budget_denials = denials caused only by an exhausted budget k (over-conservative
+        failures that a larger k would fix).
+        """
+        sources = [d["source"] for d in self.decision_log]
+        return {
+            "n_calls": len(sources),
+            "approved": sum(d["final"] == "approve" for d in self.decision_log),
+            "denied": sum(d["final"] == "deny" for d in self.decision_log),
+            "policy_denials": sources.count("policy_deny"),
+            "reviewer_denials": sources.count("reviewer_deny"),
+            "budget_denials": sources.count("budget_exhausted"),
+            "invalid_policy_answers": sources.count("invalid_policy_answer"),
+        }
 
     def decide(self, tc, task_description, conversation_history):
         ctx = ToolCallContext(
@@ -53,14 +74,32 @@ class GatedToolsExecutor(ToolsExecutor):
             tool_args=dict(tc.args),
             is_read_only=tc.function.startswith(_READ_ONLY_PREFIXES),
         )
-        decision = policy(tc, ctx)
-        if decision == "escalate":
+        policy_decision = policy(tc, ctx)
+        decision = policy_decision
+        if policy_decision == "approve":
+            source = "policy_approve"
+        elif policy_decision == "deny":
+            source = "policy_deny"
+        elif policy_decision == "escalate":
             if self.escalations_used >= self.budget_k:
                 decision = "deny"  # budget exhausted -> auto-deny
+                source = "budget_exhausted"
             else:
                 self.escalations_used += 1
-                decision = "approve" if reviewer(tc, ctx) else "deny"
-        print(f"[GATE] tool={tc.function} args={dict(tc.args)} -> {decision}", flush=True)
+                if reviewer(tc, ctx):
+                    decision, source = "approve", "reviewer_approve"
+                else:
+                    decision, source = "deny", "reviewer_deny"
+        else:
+            # Not exactly "approve"/"deny"/"escalate" (e.g. "Approve" or None): the call is
+            # blocked, same as before, but now it is recorded and warned about.
+            decision = "deny"
+            source = "invalid_policy_answer"
+            print(f"[GATE] WARNING: policy returned {policy_decision!r}; treated as deny", flush=True)
+        self.decision_log.append(
+            {"tool": tc.function, "policy_decision": policy_decision, "final": decision, "source": source}
+        )
+        print(f"[GATE] tool={tc.function} args={dict(tc.args)} -> {decision} ({source})", flush=True)
         return decision
 
     def query(self, query, runtime, env=EmptyEnv(), messages=[], extra_args={}):
