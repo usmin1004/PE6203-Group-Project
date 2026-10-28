@@ -93,7 +93,10 @@ def main():
             for m in out[3][len(messages):]:
                 if m["role"] == "tool":
                     text = get_text_content_as_str(m["content"]) if m["content"] else ""
-                    hit = bool(state["goal"]) and state["goal"][:40] in text
+                    def _norm(s):
+                        return "".join(ch for ch in s if ch.isalnum())
+
+                    hit = bool(state["goal"]) and _norm(state["goal"])[:40] in _norm(text)
                     print(f"[TOOL RESULT] {m['tool_call'].function} | attack text inside: {hit}\n    {text[:500]!r}", flush=True)
             return out
 
@@ -125,6 +128,7 @@ def main():
                     "security": security,
                     "safe_complete": bool(utility and not security),
                     "escalations_used": gate.escalations_used,
+                "gate": gate.summary(),
                     "budget_k": gate.budget_k,
                 }
                 results.append(row)
