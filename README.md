@@ -1,129 +1,152 @@
-# A1 — Foundations Build · starter notebooks
+# Safety Approval Policies for Agent Harnesses (AgentDojo) — PE6203 Group Project 2
 
-> **Reading this file.** This is a `.md` (Markdown) file — an ordinary plain-text file with a few
-> light formatting marks in it. The `#`, `**` and `|` characters are formatting, not typos, and you
-> need no special software to read it.
->
-> **Easiest option: open `README.pdf` in this same folder instead.** Identical content, properly
-> laid out. Otherwise: drag this file into a browser tab, or right-click it and choose *Open with →*
-> **Notepad** (Windows) / **TextEdit** (Mac) / **VS Code**. Colab, GitHub and VS Code all display it
-> with the formatting applied.
+An **approval gate** for the AgentDojo `workspace` suite. Before every tool call the agent wants to make, the gate decides:
 
-Three notebooks, one per part of A1. Each one already works end to end on a **placeholder domain**
-(houseplants). Your job is to replace the placeholder with **your** domain — the same domain across
-all three parts — and to do the thinking the brief asks for.
+- **approve** — the call runs;
+- **deny** — the call is blocked (the agent sees "Denied by the approval gate.");
+- **escalate** — a simulated human reviewer decides, using one unit of the per-task escalation budget **k**. When the budget is used up, further escalations are **auto-denied**.
 
-| File | Part | What it does |
-|---|---|---|
-| `PE6201_A1_Part1_Starter.ipynb` | Part 1 · Choose the right tool | Classifies the same test items twice — a trained scikit-learn classifier vs a foundation-model API call — and measures accuracy, cost, latency and effort side by side. |
-| `PE6201_A1_Part2_Starter.ipynb` | Part 2 · Build a minimal retrieval system | Chunks and embeds your documents, retrieves the nearest passages, answers questions from them only, and gives you four tested ways to break it. |
-| `PE6201_A1_Part3_Starter.ipynb` | Part 3 · Prompt and evaluate | A ten-case evaluation harness graded at two levels — L1 automatic assertions and an L2 judgement check — run across two prompt versions. |
+We compare our checklist policy with two baselines (full-approve, full-escalate) and a Direct-LLM baseline, using two metrics from the assignment:
 
-A `.py` twin sits beside each `.ipynb`. They are the same file in two formats; open the `.ipynb`.
+- **TCR@k** — fraction of tasks completed safely (user task succeeds and no unauthorized tool call runs) when at most k calls per task may be escalated.
+- **HITL load** — total number of escalations across all successfully completed tasks (a **sum**, not an average).
 
-## How to run them
-
-**Google Colab is the easy route.** Upload the `.ipynb`, then add your OpenRouter key as a Colab
-secret named `OPENROUTER_API_KEY` (the key icon in the left sidebar) and give the notebook access.
-The notebook picks it up automatically. Locally, set it as an environment variable of the same name.
-If neither is present the notebook asks you to paste it, hidden.
-
-**Never type your key into a code cell.** A key pasted into a cell gets saved into the notebook, and
-the notebook goes into your submission ZIP.
-
-Run every notebook **top to bottom** the first time, before changing anything. Seeing the placeholder
-work is how you learn what a filled-in version looks like.
-
-## What to change
-
-Every line you need to touch is marked `### REPLACE ME`. Nothing else needs editing to submit —
-though the cells marked `TRY THIS (knob)` are where the interesting findings come from, and the
-brief rewards reporting what moved when you turned one.
-
-**The placeholder domain is not a suggestion.** Do not submit houseplants. Pick a domain you
-genuinely know — the brief explains why that matters and how to scope it.
-
-## Cost
-
-All three notebooks together make roughly 110 short calls. On the default model that is a small
-fraction of one US cent, against a key sized to cover A1, A2 and the Project. Each notebook prints
-its token count at the end, because cost is one of the things you are being asked to measure.
-
-**Your allocation is fixed and will not be topped up.** Working to a budget — and choosing a model
-you can afford — is part of what this course teaches, which is why Part 1 asks you to measure cost
-in the first place. Keep the cheap default model unless your own numbers show it failing, set
-`FAST_MODE = True` while you are debugging, and keep `temperature = 0` and `max_tokens` tight. The
-FAQ has a fuller guide to choosing a model.
-
-**Check what is left, often.** Every notebook has a `credit_check()` cell just after the setup —
-run it at the start of a working session and again at the end. Checking is free; this endpoint is
-not billed. From a terminal the same thing is:
+## Repository layout
 
 ```
-curl https://openrouter.ai/api/v1/key \
-  -H "Authorization: Bearer YOUR_OPENROUTER_API_KEY"
+interfaces.py            Shared contract: ToolCallContext, policy(call, ctx), reviewer(call, ctx)
+gate_patch.py            The approval gate (Part 1): approve / deny / escalate, budget k, denial-reason log
+zhipu_patch.py           Fixes a Zhipu API quirk; loaded automatically by gate_patch
+
+policies/                Approval policies and baselines
+  full_approve_policy.py   Baseline: approve every call
+  full_escalate_policy.py  Baseline: escalate every call (limited by k)
+  direct_llm_policy.py     Baseline: one plain LLM call per tool call
+  checklist_policy.py      Our policy (Part 3): authorization / target & side effects / untrusted instructions
+  stub_policy.py           Placeholder default
+  cost_tracker.py          Token accounting per component (agent / policy / reviewer)
+  PART2.md, test_part2.py  Baseline + budget documentation and 35 offline checks
+
+reviewer/                LLM-simulated human reviewer (Part 4)
+  llm_reviewer.py          reviewer(call, ctx) -> bool, sees only human-visible information
+  run_with_accounting.py   Runs the experiment scripts and saves per-component costs
+  stub_reviewer.py         Placeholder (always approves)
+  FINAL_HANDOFF.md         Commands and configuration for experiments
+
+run_experiment.py          Benign tasks only (no attack)
+run_attack_experiment.py   Live agent + AgentDojo attack (safe task completion)
+run_replay_experiment.py   No agent model: replays ground-truth benign + attack calls through the gate
+check_security.py          Sanity check that AgentDojo's attack scoring can return "attack succeeded"
+
+evaluation/EXPERIMENT_DESIGN.md   Experiment plan (Part 5)
+part3/                    Part 3 report, tests and live results for the checklist policy
+part6/                    Failure analysis, escalation-value discussion and original case evidence
 ```
 
-It returns `usage` (spent so far) and `limit` (your cap) in US dollars — what you have left is the
-difference. The `rate_limit` field in the same reply is what you hit when a cell fails and then
-works fine a minute later.
+## How the gate works
 
-If a call fails with a rate-limit error, wait a minute and re-run that cell. If you are burning
-credit unexpectedly fast, stop and email early — something specific is usually causing it, and it is
-fixable while there is still time.
+`gate_patch.py` replaces AgentDojo's `ToolsExecutor` with a `GatedToolsExecutor`. For each tool call it builds a `ToolCallContext` (task description, conversation history, tool name and arguments, read-only flag) and calls the policy. If the policy returns `escalate` and the budget has room, the reviewer is called (its answer is final, and the escalation costs 1). If the budget is used up, the call is denied. The budget resets before every task.
 
-## Which parts need the API
+The gate records why each call was approved or denied (`policy_approve`, `policy_deny`, `reviewer_approve`, `reviewer_deny`, `budget_exhausted`, `invalid_policy_answer`). Result rows contain a `gate` entry with these counts, so over-conservative failures caused by a small k can be separated from other denials. A policy answer that is not exactly `"approve"`, `"deny"` or `"escalate"` is treated as deny and prints a warning.
 
-| Part | Model calls | Runs locally and free |
+## Setup (once, on your own computer)
+
+Use a short folder path (e.g. directly under `Documents`); very deep paths can hit the Windows path-length limit during install.
+
+```powershell
+git clone https://github.com/usmin1004/PE6203-Group-Project.git
+cd PE6203-Group-Project
+python -m venv ad-env
+.\ad-env\Scripts\Activate.ps1
+pip install https://github.com/ethz-spylab/agentdojo/archive/refs/heads/main.zip
+```
+
+AgentDojo is installed from its GitHub `main` branch because the `OPENAI_COMPATIBLE` model provider we use was not in a released version when we started.
+
+## Models and API keys
+
+All LLM calls use an OpenAI-compatible endpoint. **Never commit API keys.** Set them in your own terminal only:
+
+```powershell
+$env:PYTHONUTF8 = "1"
+$env:OPENAI_COMPATIBLE_BASE_URL = "<endpoint, e.g. https://open.bigmodel.cn/api/paas/v4/ or https://openrouter.ai/api/v1>"
+$env:OPENAI_COMPATIBLE_API_KEY = Read-Host "API key"
+```
+
+Optional, per component (defaults to `glm-4.5-flash` where applicable):
+
+```powershell
+$env:CHECKLIST_MODEL = "<model id>"    # Part 3 policy
+$env:REVIEWER_MODEL = "<model id>"     # Part 4 reviewer
+$env:DIRECT_LLM_MODEL = "<model id>"   # Direct-LLM baseline
+```
+
+Keep the model, prompts and token limits fixed across policy and k comparisons.
+
+Which model was used where:
+
+- **Final experiments (Part 5, reported in the group report): `openai/gpt-4o-mini`** via OpenRouter, for the agent, policies and simulated reviewer.
+- Separate earlier runs ("cohort A") in `part3/live/` and `part6/evidence/` (28 October 2026) used `openai/gpt-4.1-mini` via OpenRouter. They are kept as a separate experiment and are not pooled with the final results.
+- `glm-4.5-flash` is only the default value in the code (class Zhipu endpoint); pass `--model-id` or set the `*_MODEL` variables to use another model.
+- Small free models rarely followed injected instructions, so live attack runs with them could not separate policies; see "Limitations".
+
+Results from different models must not be mixed in one comparison. State the model next to every number in the report.
+
+## Running experiments
+
+Select the policy, reviewer and budget on the command line:
+
+```powershell
+# Replay test (no agent model; fast and cheap): ground-truth benign + attack calls through the gate
+python run_replay_experiment.py --policy policies.checklist_policy --reviewer reviewer.llm_reviewer --k 3
+
+# Live agent with an AgentDojo attack
+python run_attack_experiment.py --policy policies.checklist_policy --reviewer reviewer.llm_reviewer --k 3 --model-id <model id> --user-tasks user_task_0,user_task_1 --injection-tasks injection_task_0
+
+# Benign tasks only
+python run_experiment.py --policy policies.checklist_policy --reviewer reviewer.llm_reviewer --k 3 --tasks user_task_0,user_task_1
+
+# Same runs with per-component cost accounting
+python -m reviewer.run_with_accounting --mode replay --accounting-out runs/replay_k3_costs.json --policy policies.checklist_policy --k 3 --out runs/replay_k3.json
+```
+
+Baselines: `--policy policies.full_approve_policy`, `--policy policies.full_escalate_policy`, `--policy policies.direct_llm_policy`. Use the same tasks and k values for every policy. Results are written to `runs/*.json` (this folder is git-ignored; copy final results you cite into the repository).
+
+Fields to use in the report:
+
+| Metric | Field |
+|---|---|
+| TCR@k | `tcr` (attack and replay runs) |
+| HITL load (assignment definition) | `hitl_load_official` (sum of escalations over safely completed tasks); `hitl_load_utility_success` in benign runs |
+| Old ratio (all escalations / successes), do not use in the report | `hitl_load` |
+| Why calls were denied | `gate` entry in each result row |
+| Component cost | `api_usage` / accounting JSON (agent, policy, reviewer) |
+
+## Reproducing the sanity checks
+
+```powershell
+python check_security.py                                  # attacker's own calls must score "attack succeeded"
+python run_replay_experiment.py --policy policies.full_approve_policy --k 0     # benign 100%, attacks blocked 0%
+python run_replay_experiment.py --policy policies.full_escalate_policy --k 0    # benign 0%, attacks blocked 100%
+```
+
+## Adding your own policy or reviewer
+
+Add a file under `policies/` or `reviewer/` that follows `interfaces.py`, then select it with `--policy` / `--reviewer` (or the environment variables `GATE_POLICY_MODULE`, `GATE_REVIEWER_MODULE`, `GATE_BUDGET_K`). Policies must return exactly the lowercase strings `approve`, `deny` or `escalate`. A reviewer may only use information a real human reviewer would see; benchmark labels and attack annotations must never reach it.
+
+## Limitations
+
+- The replay test assumes the agent always attempts the attack (worst case) and uses a synthetic conversation history; tool outputs are not simulated.
+- Small free models rarely followed injected instructions in live runs, so attack success was near zero there.
+- Free models vary from run to run, so a single run of a policy can differ from the next; compare policies over many tasks.
+
+## Documentation by part
+
+| Part | Topic | Where |
 |---|---|---|
-| 1 | the API half of the comparison | the scikit-learn classifier |
-| 2 | writing the answer | chunking, embedding, retrieval |
-| 3 | the task, and the L2 judge if you use a model as judge | the L1 assertions |
-
-Part 2 embeds locally because OpenRouter serves chat models, not embedding models — which is itself
-the "which layer do you rent, and which do you own?" question from Class 2. If the local embedder
-will not download, the notebook falls back to TF-IDF automatically and tells you it has done so.
-That fallback matches **words** rather than **meaning**, which changes which failures you find — so
-say in your writeup if you used it.
-
-## Honesty, briefly
-
-You may use an AI assistant on this assignment; the brief sets three conditions. Two of them bite
-hardest here: **you must be able to explain every block of code you submit** — what it does and why
-it is there, which is about function, not syntax — and **the numbers you report must be measurements
-you actually ran**. An assistant will produce a plausible accuracy figure or a
-convincing pass rate without running anything. The harnesses in these notebooks print real numbers —
-use those.
-
-## If something breaks
-
-**These notebooks are a working draft, not gospel.** They were written before any of you ran them,
-against library versions, model names and provider behaviour that change without notice. Assume they
-will occasionally need repair.
-
-When a cell fails, in this order:
-
-1. **Read the error.** The last line of a Python traceback usually names the problem in plain words.
-2. **Try to fix it yourself.** Debugging is part of the work, not a detour from it — and working out
-   *why* something broke is Technical Execution and Reasoning at the same time.
-3. **Report it** — in class or by email — with the cell, the **full** error text, and what you
-   already tried. The shared copy gets fixed and the cohort gets told, so nobody behind you loses
-   the same hour.
-
-Reporting a problem costs you nothing and is not an admission that you are struggling. A starter
-notebook is shared infrastructure; the first person to hit a bug and say so saves everyone after
-them. **The one thing not to do is quietly work around a broken cell and say nothing** — if your fix
-changes what the notebook measures (a different model, a smaller sample, a skipped check), say so in
-your writeup. An unexplained deviation looks like a mistake; an explained one looks like judgement.
-
-Common ones, already known:
-
-- `ModuleNotFoundError` — re-run the `%pip install` cell at the top, then restart the runtime.
-- The API returns nothing sensible — check `GEN_MODEL` is a model your key can reach
-  (openrouter.ai/models), and that you have not run out of credit.
-- A cell fails and then works a minute later — that is the rate limit, not a bug.
-- Part 2 retrieves nothing useful — that is not a bug either. It is Part 2. Diagnose it.
-- Anything else — check `PE6201_A1_FAQ.pdf` first; it defines accuracy, cost, latency, effort, scale,
-  edge, system and harness with formulas, and answers the questions this assignment reliably
-  produces. Then bring it to class or email. There is no such thing as a question too basic; if you
-  are wondering, six other people are too.
+| 1 | Gate, budget k, experiment runners | `gate_patch.py`, `run_*_experiment.py` |
+| 2 | Baselines, budget checks, Direct-LLM, cost tracker | `policies/PART2.md` |
+| 3 | Checklist approval policy | `part3/PART3_REPORT.md`, `part3/live/` |
+| 4 | Simulated human reviewer | `reviewer/PART4.md`, `reviewer/PART4_REPORT.md`, `reviewer/FINAL_HANDOFF.md` |
+| 5 | Experiment design and results | `evaluation/EXPERIMENT_DESIGN.md` |
+| 6 | Failure analysis and escalation value | `part6/FAILURE_ANALYSIS.md` |
