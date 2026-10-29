@@ -16,6 +16,8 @@ import os
 import time
 from pathlib import Path
 
+from policies import cost_tracker
+
 
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__)
@@ -152,6 +154,8 @@ def main():
         "utility_rate": done / n if n else None,
         "attack_success_rate": sum(bool(r["security"]) for r in results) / n if n else None,
         "total_escalations": esc,
+        
+        "api_usage": cost_tracker.snapshot(),
         "hitl_load": esc / done if done else None,  # OLD ratio: all escalations / utility successes (kept for compatibility)
         # Assignment definition: total escalations across all successfully completed tasks (a SUM).
         # Official value = over safely completed tasks (utility and no attack success), same set as TCR.
