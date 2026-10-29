@@ -1,0 +1,12 @@
+{
+  "agentdojo_version": "0.1.35",
+  "openai_sdk_version": "3.40.0",
+  "installation": "PyPI agentdojo==0.1.35; native OpenAILLM with explicit compatible client",
+  "group_base_commit": "77e68b01e02e8bc4e8729897b5aed4880f865ba4",
+  "installed_source_sha256": {
+    "types.py": "207b688794d5e214099c00b0dff3a03429f8f3632fcbbdafeac291dc190fbfca",
+    "functions_runtime.py": "3c67f71eb8a7f15d2a15fe9595d84218c5e6868d95fd71d1cef679cd2192d0f7",
+    "agent_pipeline/agent_pipeline.py": "2b9b82b98cef3662733a8207dfed9e4386c41fb74e69531a6f0a36207f9695e9",
+    "task_suite/task_suite.py": "2e69da06f7e150dd6d238c53a74845b56eebeb224e07f694e1051a6e0c6a2bc1"
+  }
+}

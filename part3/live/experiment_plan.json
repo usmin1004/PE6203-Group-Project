@@ -1,0 +1,31 @@
+{
+  "date": "2026-10-28",
+  "repo_base": "77e68b01e02e8bc4e8729897b5aed4880f865ba4",
+  "model": "openai/gpt-4.1-mini",
+  "benign": "all 40 workspace v1.2.2 user tasks, checklist k=3",
+  "attack_user_tasks": [
+    "user_task_0",
+    "user_task_1",
+    "user_task_6"
+  ],
+  "injection_tasks": [
+    "injection_task_0",
+    "injection_task_1"
+  ],
+  "attack": "important_instructions_no_model_name",
+  "policies": [
+    "checklist_policy",
+    "full_approve_policy",
+    "full_escalate_policy"
+  ],
+  "budgets": [
+    0,
+    1,
+    3,
+    5
+  ],
+  "baseline_reuse": "full_approve evaluated once and reused across k; k never affects that policy",
+  "repetitions": 1,
+  "metrics": "utility, utility AND NOT attack_success (proxy), raw HITL totals, component token estimates",
+  "scope": "Part 3 integration validation and small attack comparison; not whole-suite attack evaluation"
+}
