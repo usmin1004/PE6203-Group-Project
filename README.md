@@ -1,124 +1,129 @@
-# AgentDojo Approval Gate — PE6203 Group Project 2
+# A1 — Foundations Build · starter notebooks
 
-An approval gate for the AgentDojo `workspace` suite. It intercepts every
-tool call the agent wants to make and decides **approve / deny / escalate
-to a human reviewer**, under a per-task escalation budget `k`.
+> **Reading this file.** This is a `.md` (Markdown) file — an ordinary plain-text file with a few
+> light formatting marks in it. The `#`, `**` and `|` characters are formatting, not typos, and you
+> need no special software to read it.
+>
+> **Easiest option: open `README.pdf` in this same folder instead.** Identical content, properly
+> laid out. Otherwise: drag this file into a browser tab, or right-click it and choose *Open with →*
+> **Notepad** (Windows) / **TextEdit** (Mac) / **VS Code**. Colab, GitHub and VS Code all display it
+> with the formatting applied.
 
-## How it works
+Three notebooks, one per part of A1. Each one already works end to end on a **placeholder domain**
+(houseplants). Your job is to replace the placeholder with **your** domain — the same domain across
+all three parts — and to do the thinking the brief asks for.
 
-- `gate_patch.py` replaces AgentDojo's `ToolsExecutor` with a
-  `GatedToolsExecutor` that checks every tool call before it runs.
-- For each tool call, it calls your `policy(call, ctx)` function. That
-  function must return `"approve"`, `"deny"`, or `"escalate"`.
-- If the policy says `"escalate"`:
-  - if the per-task budget `k` still has room, it calls `reviewer(call, ctx)`
-    (the simulated human reviewer) and approves/denies based on that.
-  - if the budget is used up, it's auto-denied.
-- `interfaces.py` defines the exact shape (`ToolCallContext`, `policy()`,
-  `reviewer()`) that your policy/reviewer file must follow.
-
-## Setup (do this once, on your own computer)
-
-Use a short folder path (e.g. `C:\dev\...` or directly under `Documents`) —
-a very deeply nested path can hit a Windows file-path-length limit during
-install.
-
-```powershell
-git clone https://github.com/usmin1004/PE6203-Group-Project.git
-cd PE6203-Group-Project
-python -m venv ad-env
-.\ad-env\Scripts\Activate.ps1
-pip install https://github.com/ethz-spylab/agentdojo/archive/refs/heads/main.zip
-```
-
-We install AgentDojo straight from its GitHub `main` branch (not the
-stable PyPI release) because the `OPENAI_COMPATIBLE` model provider we use
-isn't in a released version yet.
-
-## Who does what (start here)
-
-1. Read this whole README once.
-2. Read `interfaces.py` — it defines the exact function shape your file must follow.
-3. Depending on your part:
-
-| Part | What to do | Where |
+| File | Part | What it does |
 |---|---|---|
-| 2 — Baselines + budget | Review/refine the first-draft baselines, and sanity-check the `GATE_BUDGET_K` behavior in `gate_patch.py` | `policies/full_approve_policy.py`, `policies/full_escalate_policy.py` |
-| 3 — Approval policy | Write the checklist policy as a new file implementing `policy(call, ctx)` | new file in `policies/`, e.g. `policies/checklist_policy.py` |
-| 4 — Simulated reviewer | Write the LLM-simulated human reviewer as a new file implementing `reviewer(call, ctx)`. Only use information a real human reviewer would see — never ground-truth or attack labels | new file in `reviewer/`, e.g. `reviewer/llm_reviewer.py` |
-| 5 — Experiments | Use `run_experiment.py` to sweep policies and `k` values, collect data for the TCR@k curve and HITL Load table | `run_experiment.py`, results land in `runs/*.json` |
-| 6 — Failure analysis + report | Read `PROGRESS_LOG.md` and the `runs/*.json` files for concrete numbers and trajectories | `PROGRESS_LOG.md`, `runs/` |
+| `PE6201_A1_Part1_Starter.ipynb` | Part 1 · Choose the right tool | Classifies the same test items twice — a trained scikit-learn classifier vs a foundation-model API call — and measures accuracy, cost, latency and effort side by side. |
+| `PE6201_A1_Part2_Starter.ipynb` | Part 2 · Build a minimal retrieval system | Chunks and embeds your documents, retrieves the nearest passages, answers questions from them only, and gives you four tested ways to break it. |
+| `PE6201_A1_Part3_Starter.ipynb` | Part 3 · Prompt and evaluate | A ten-case evaluation harness graded at two levels — L1 automatic assertions and an L2 judgement check — run across two prompt versions. |
 
-You only need to add your own file under `policies/` or `reviewer/` — you don't need to touch `gate_patch.py` or anyone else's file.
+A `.py` twin sits beside each `.ipynb`. They are the same file in two formats; open the `.ipynb`.
 
-## Folder structure
+## How to run them
+
+**Google Colab is the easy route.** Upload the `.ipynb`, then add your OpenRouter key as a Colab
+secret named `OPENROUTER_API_KEY` (the key icon in the left sidebar) and give the notebook access.
+The notebook picks it up automatically. Locally, set it as an environment variable of the same name.
+If neither is present the notebook asks you to paste it, hidden.
+
+**Never type your key into a code cell.** A key pasted into a cell gets saved into the notebook, and
+the notebook goes into your submission ZIP.
+
+Run every notebook **top to bottom** the first time, before changing anything. Seeing the placeholder
+work is how you learn what a filled-in version looks like.
+
+## What to change
+
+Every line you need to touch is marked `### REPLACE ME`. Nothing else needs editing to submit —
+though the cells marked `TRY THIS (knob)` are where the interesting findings come from, and the
+brief rewards reporting what moved when you turned one.
+
+**The placeholder domain is not a suggestion.** Do not submit houseplants. Pick a domain you
+genuinely know — the brief explains why that matters and how to scope it.
+
+## Cost
+
+All three notebooks together make roughly 110 short calls. On the default model that is a small
+fraction of one US cent, against a key sized to cover A1, A2 and the Project. Each notebook prints
+its token count at the end, because cost is one of the things you are being asked to measure.
+
+**Your allocation is fixed and will not be topped up.** Working to a budget — and choosing a model
+you can afford — is part of what this course teaches, which is why Part 1 asks you to measure cost
+in the first place. Keep the cheap default model unless your own numbers show it failing, set
+`FAST_MODE = True` while you are debugging, and keep `temperature = 0` and `max_tokens` tight. The
+FAQ has a fuller guide to choosing a model.
+
+**Check what is left, often.** Every notebook has a `credit_check()` cell just after the setup —
+run it at the start of a working session and again at the end. Checking is free; this endpoint is
+not billed. From a terminal the same thing is:
 
 ```
-interfaces.py          # shared contract — read this first
-gate_patch.py           # the approval gate itself (Part 1)
-zhipu_patch.py           # fixes a Zhipu API quirk, auto-loaded by gate_patch
-policies/                # Part 2 (baselines) and Part 3 (your own policy) live here
-  stub_policy.py          # placeholder default
-  full_approve_policy.py  # baseline: always approve
-  full_escalate_policy.py # baseline: always escalate
-reviewer/                # Part 4 (simulated human reviewer) lives here
-  stub_reviewer.py         # placeholder default (always approves)
+curl https://openrouter.ai/api/v1/key \
+  -H "Authorization: Bearer YOUR_OPENROUTER_API_KEY"
 ```
 
-## How to add your own policy or reviewer (Part 2 / 3 / 4)
+It returns `usage` (spent so far) and `limit` (your cap) in US dollars — what you have left is the
+difference. The `rate_limit` field in the same reply is what you hit when a cell fails and then
+works fine a minute later.
 
-1. Add a new file under `policies/` (or `reviewer/`) implementing the
-   function shape from `interfaces.py`.
-2. Point the gate at it with an environment variable before running the
-   benchmark, e.g. (PowerShell):
-   ```powershell
-   $env:GATE_POLICY_MODULE = "policies.your_file_name_without_dot_py"
-   $env:GATE_REVIEWER_MODULE = "reviewer.your_file_name_without_dot_py"
-   $env:GATE_BUDGET_K = "3"
-   ```
-3. Run the benchmark as usual (see below). No need to touch `gate_patch.py`.
+If a call fails with a rate-limit error, wait a minute and re-run that cell. If you are burning
+credit unexpectedly fast, stop and email early — something specific is usually causing it, and it is
+fixable while there is still time.
 
-## Running tasks
+## Which parts need the API
 
-First, every time you open a new terminal:
-```powershell
-.\ad-env\Scripts\Activate.ps1
-$env:PYTHONUTF8 = "1"
-$env:OPENAI_COMPATIBLE_BASE_URL = "https://open.bigmodel.cn/api/paas/v4/"
-$env:OPENAI_COMPATIBLE_API_KEY = Read-Host "API key"
-```
+| Part | Model calls | Runs locally and free |
+|---|---|---|
+| 1 | the API half of the comparison | the scikit-learn classifier |
+| 2 | writing the answer | chunking, embedding, retrieval |
+| 3 | the task, and the L2 judge if you use a model as judge | the L1 assertions |
 
-Then, to test your own policy/reviewer on a couple of tasks and save results:
-```powershell
-python run_experiment.py --policy policies.your_file_name --reviewer reviewer.your_file_name --k 3 --tasks user_task_0,user_task_1
-```
-Leave out `--tasks` to run every task in the suite. Results are saved as
-`runs/<policy>_k<k>_<timestamp>.json`.
+Part 2 embeds locally because OpenRouter serves chat models, not embedding models — which is itself
+the "which layer do you rent, and which do you own?" question from Class 2. If the local embedder
+will not download, the notebook falls back to TF-IDF automatically and tells you it has done so.
+That fallback matches **words** rather than **meaning**, which changes which failures you find — so
+say in your writeup if you used it.
 
-Or, to run a single task with AgentDojo's own CLI (useful for quick debugging):
-```powershell
-python -m agentdojo.scripts.benchmark -s workspace -ut user_task_0 --model OPENAI_COMPATIBLE --model-id glm-4.5-flash -ml gate_patch -f
-```
+## Honesty, briefly
 
-Never commit an API key. Set it as an environment variable in your own
-terminal only.
+You may use an AI assistant on this assignment; the brief sets three conditions. Two of them bite
+hardest here: **you must be able to explain every block of code you submit** — what it does and why
+it is there, which is about function, not syntax — and **the numbers you report must be measurements
+you actually ran**. An assistant will produce a plausible accuracy figure or a
+convincing pass rate without running anything. The harnesses in these notebooks print real numbers —
+use those.
 
-## Open question: injection/attack tasks (needs team discussion)
+## If something breaks
 
-`run_experiment.py` currently only runs plain user tasks and measures
-`utility` (did the task succeed). It does **not** yet run AgentDojo's
-*injection tasks* (the attack scenarios), so it can't measure the
-"without executing any unauthorized tool call" part of TCR@k — only the
-"task completed" part.
+**These notebooks are a working draft, not gospel.** They were written before any of you ran them,
+against library versions, model names and provider behaviour that change without notice. Assume they
+will occasionally need repair.
 
-To get real TCR@k numbers we need a run mode that also injects an attack
-and checks `security` (AgentDojo already tracks this per task, see
-`benchmark_suite_with_injections` in `agentdojo/benchmark.py`). Whoever
-needs this first (likely Part 5, maybe Part 6) — flag it here or message
-Part 1, and we'll extend `run_experiment.py` together rather than
-duplicating the work in two places.
+When a cell fails, in this order:
 
-## Status
+1. **Read the error.** The last line of a Python traceback usually names the problem in plain words.
+2. **Try to fix it yourself.** Debugging is part of the work, not a detour from it — and working out
+   *why* something broke is Technical Execution and Reasoning at the same time.
+3. **Report it** — in class or by email — with the cell, the **full** error text, and what you
+   already tried. The shared copy gets fixed and the cohort gets told, so nobody behind you loses
+   the same hour.
 
-See `PROGRESS_LOG.md` for a detailed, chronological build log (useful for
-the individual report).
+Reporting a problem costs you nothing and is not an admission that you are struggling. A starter
+notebook is shared infrastructure; the first person to hit a bug and say so saves everyone after
+them. **The one thing not to do is quietly work around a broken cell and say nothing** — if your fix
+changes what the notebook measures (a different model, a smaller sample, a skipped check), say so in
+your writeup. An unexplained deviation looks like a mistake; an explained one looks like judgement.
+
+Common ones, already known:
+
+- `ModuleNotFoundError` — re-run the `%pip install` cell at the top, then restart the runtime.
+- The API returns nothing sensible — check `GEN_MODEL` is a model your key can reach
+  (openrouter.ai/models), and that you have not run out of credit.
+- A cell fails and then works a minute later — that is the rate limit, not a bug.
+- Part 2 retrieves nothing useful — that is not a bug either. It is Part 2. Diagnose it.
+- Anything else — check `PE6201_A1_FAQ.pdf` first; it defines accuracy, cost, latency, effort, scale,
+  edge, system and harness with formulas, and answers the questions this assignment reliably
+  produces. Then bring it to class or email. There is no such thing as a question too basic; if you
+  are wondering, six other people are too.
