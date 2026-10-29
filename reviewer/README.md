@@ -4,6 +4,11 @@ Jeff's contribution is the LLM-simulated human reviewer. The assignment requests
 submission through the group GitHub repository. This directory supplies the
 reviewer implementation, its report section, and supporting validation evidence.
 
+Current integration entry point: [FINAL_HANDOFF.md](FINAL_HANDOFF.md). The
+28 October update passes 31 checks and includes the shared cost-tracker adapter
+and [run_with_accounting.py](run_with_accounting.py). PR #1 is already merged;
+this follow-up must also be merged before using the new accounting behavior.
+
 ## Required contribution and uploaded materials
 
 | Part 4 requirement | Material |

@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 from interfaces import ToolCallContext
 from reviewer import llm_reviewer as mod
+from policies import cost_tracker
 
 
 def context(**overrides):
@@ -233,6 +234,15 @@ class ReviewerTests(unittest.TestCase):
         os.environ["REVIEWER_JSON_MODE"] = "invalid"
         self.assertEqual(mod.review_with_details(None, context()).status, "invalid_context_or_config")
 
+    def test_glm_thinking_option_is_limited_to_the_class_provider(self):
+        self.assertTrue(mod.reviewer(None, context()))
+        self.assertEqual(self.client.chat.completions.create.call_args.kwargs["extra_body"],
+                         {"thinking": {"type": "disabled"}})
+        for base in ("https://openrouter.ai/api/v1", "https://bigmodel.cn.example.invalid/v1"):
+            with patch.dict(os.environ, {"REVIEWER_BASE_URL": base}):
+                self.assertTrue(mod.reviewer(None, context()))
+                self.assertNotIn("extra_body", self.client.chat.completions.create.call_args.kwargs)
+
     def test_logging_includes_component_cost_and_status(self):
         with self.assertLogs(mod.logger, level="INFO") as captured:
             mod.reviewer(None, context())
@@ -294,9 +304,12 @@ class ReviewerTests(unittest.TestCase):
                 "usage": {"prompt_tokens": 100, "completion_tokens": 10, "total_tokens": 110}})
 
         actual_factory = sdk.OpenAI
+        cost_tracker.reset()
         with sdk.DefaultHttpxClient(transport=http.MockTransport(handle)) as http_client:
             with patch.object(sdk, "OpenAI", side_effect=lambda **kwargs: actual_factory(http_client=http_client, **kwargs)):
-                outcome = mod.review_with_details(None, context())
+                with cost_tracker.component("policy"):
+                    outcome = mod.review_with_details(None, context())
+                    cost_tracker.record(cost_tracker._current.get(), 7, 3, "offline-policy")
         self.assertEqual(outcome.status, "ok")
         self.assertTrue(outcome.approved)
         self.assertEqual(outcome.total_tokens, 110)
@@ -305,6 +318,10 @@ class ReviewerTests(unittest.TestCase):
         self.assertEqual(requests[0]["max_tokens"], 512)
         self.assertEqual(requests[0]["messages"][0]["role"], "system")
         self.assertNotIn("tools", requests[0])
+        self.assertEqual(cost_tracker.snapshot(), {
+            "reviewer": {"calls": 1, "prompt_tokens": 100, "completion_tokens": 10},
+            "policy": {"calls": 1, "prompt_tokens": 7, "completion_tokens": 3}})
+        cost_tracker.reset()
 
 
 if __name__ == "__main__":

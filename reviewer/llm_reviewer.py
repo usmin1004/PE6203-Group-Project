@@ -10,6 +10,7 @@ import logging
 import math
 import os
 import time
+from urllib.parse import urlparse
 from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from typing import Any
@@ -219,14 +220,23 @@ def review_with_details(call: Any, ctx: ToolCallContext) -> ReviewResult:
         "OPENAI_COMPATIBLE_BASE_URL", "https://open.bigmodel.cn/api/paas/v4/")
     try:
         from openai import OpenAI
+        from policies import cost_tracker
+
+        # Restrict the GLM thinking switch to the actual class provider.
+        host = (urlparse(base_url).hostname or "").lower()
+        provider_options = {}
+        if (host == "bigmodel.cn" or host.endswith(".bigmodel.cn")) and model.startswith("glm-4.5"):
+            provider_options["extra_body"] = {"thinking": {"type": "disabled"}}
 
         # No automatic retries: a single escalation causes at most one API request.
-        with OpenAI(api_key=key, base_url=base_url, timeout=timeout, max_retries=0) as client:
+        with cost_tracker.component("reviewer"), OpenAI(
+                api_key=key, base_url=base_url, timeout=timeout, max_retries=0) as client:
             response = client.chat.completions.create(
                 model=model, temperature=0, max_tokens=max_tokens,
                 messages=[{"role": "system", "content": SYSTEM_PROMPT},
                           {"role": "user", "content": evidence}],
                 **({"response_format": {"type": "json_object"}} if json_mode == "1" else {}),
+                **provider_options,
             )
         raw_usage = _field(response, "usage")
         response_model = _field(response, "model")

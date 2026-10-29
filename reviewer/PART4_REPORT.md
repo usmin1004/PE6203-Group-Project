@@ -130,8 +130,9 @@ semantic safety judgment. The character ceiling avoids silently removing evidenc
 but does not guarantee that every provider context window will fit the request.
 Tool schemas are not currently supplied by the shared context, and the gate's
 read-only heuristic and unset remote-resource flag limit metadata quality.
-The current experiment runner reports plain-task utility; attack-aware evaluation
-is still needed to establish safe TCR@k.
+The earlier recorded run reports plain-task utility. The repository now provides
+separate replay and real-attack runners; comparative attack-aware evaluation is
+still needed to establish safe TCR@k.
 
 ## Presentation notes
 
@@ -161,3 +162,22 @@ evaluation. Labels are appropriate for scoring after decisions, not as inputs.
 
 An unavailable reviewer has not provided authorization. This choice is
 conservative, and operational denials must be distinguished during analysis.
+
+## Integration update on 28 October 2026
+
+The final reviewer keeps the same decision prompt, evidence boundary and Boolean
+interface. It now labels its SDK requests with the shared `reviewer` cost
+component, so policy and agent costs remain separate. A wrapper around the shared
+benign, replay and attack runners exports component usage, ordered reviewer
+records, semantic denials and operational errors. Records without provider usage
+retain unknown token counts; these must not be presented as zero-cost requests.
+For the class GLM-4.5 endpoint, provider thinking is disabled for the short
+structured decision; the option is not sent to OpenRouter.
+
+All 31 offline/native checks pass against merged main `77e68b0`, including the
+actual replay runner at k=0, 1 and 3 with the real gate and OpenAI SDK over a
+scripted HTTP transport. These verify budget enforcement, native context
+serialization, component attribution and output records. The scripted approvals
+are fixtures, not model performance or attack-resistance results. The historical
+40-task live results above are not relabeled as a run of this revision. Live GLM
+and final comparative curves remain part of the experiment stage.
