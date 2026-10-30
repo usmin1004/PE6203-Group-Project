@@ -39,6 +39,7 @@ run_replay_experiment.py   No agent model: replays ground-truth benign + attack 
 check_security.py          Sanity check that AgentDojo's attack scoring can return "attack succeeded"
 
 evaluation/EXPERIMENT_DESIGN.md   Experiment plan (Part 5)
+evaluation/PART5_Experimental_Evaluation.docx   Part 5 report: final results for all policies (gpt-4o-mini)
 part3/                    Part 3 report, tests and live results for the checklist policy
 part6/                    Failure analysis, escalation-value discussion and original case evidence
 ```
@@ -148,5 +149,5 @@ Add a file under `policies/` or `reviewer/` that follows `interfaces.py`, then s
 | 2 | Baselines, budget checks, Direct-LLM, cost tracker | `policies/PART2.md` |
 | 3 | Checklist approval policy | `part3/PART3_REPORT.md`, `part3/live/` |
 | 4 | Simulated human reviewer | `reviewer/PART4.md`, `reviewer/PART4_REPORT.md`, `reviewer/FINAL_HANDOFF.md` |
-| 5 | Experiment design and results | `evaluation/EXPERIMENT_DESIGN.md` |
+| 5 | Experiment design and final results | `evaluation/EXPERIMENT_DESIGN.md`, `evaluation/PART5_Experimental_Evaluation.docx` |
 | 6 | Failure analysis and escalation value | `part6/FAILURE_ANALYSIS.md` |
